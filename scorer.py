@@ -5,6 +5,8 @@ for the 2018 CrossFit Open leaderboard.
 
 import sys
 import pymysql as pms
+import pandas as pd
+from functools import reduce
 
 def leaderboard(division, region, limit, column_keys, creds):
     """
@@ -56,7 +58,18 @@ def leaderboard(division, region, limit, column_keys, creds):
     - specifying region=0 will give worldwide results (not region-specific)
     - any metric_key item which is not useful for scoring will still be
         retrieved, but not used for scoring
+
+    PLEASE READ:
+    - any athlete with a metric value of -1 for ANY of the specified column_keys
+        which could be used as metrics WILL NOT be included in the leaderboard.
+        These are considered DNF (did not finish) in this codebase.
     """
+
+    #result = None
+    #sub_boards = None
+    #merged_board = None
+    final_board = None
+
     try:
         #connect
         con = pms.connect(host=creds[0], user=creds[1], passwd=creds[2],
@@ -68,31 +81,87 @@ def leaderboard(division, region, limit, column_keys, creds):
             c.endswith("lbs") or
             c.endswith("reps") or
             c.endswith("ups")]
+        non_metrics = [c for c in column_keys if c not in metrics]
 
         #query
-        result = 2
-        with con.cursor() as cur:
-            sql = (
-                """
-                    SELECT id, {} FROM athlete WHERE
-                    division_id={}
-                    {}
-                    LIMIT {}
-                """
-                .format(
-                    ", ".join(metrics),
-                    division,
-                    "" if region == 0 else "AND \nregion_id={}".format(region),
-                    limit
-                )
+        #https://stackoverflow.com/questions/3126972/with-mysql-how-can-i-generate-a-column-containing-the-record-index-in-a-table?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa
+        sql = (
+            """
+                SELECT {}, {}
+                    FROM athlete
+                    WHERE
+                        division_id={}
+                        {} AND
+                        {};
+            """
+            .format(
+                ", ".join(non_metrics),
+                ", ".join(metrics),
+                division,
+                "" if region == 0 else "AND \nregion_id={}".format(region),
+                " AND ".join(["{}!=-1".format(c) for c in metrics])
             )
-            #print(sql)
-            cur.execute(sql)
-            result = cur.fetchall()
+        )
+        #print(sql)
 
-    except Exception as e:
-        #output errors (if any)
-        print(e)
+        #store result in dataframe
+        result = pd.read_sql(sql, con)
+
+        #do scoring in python
+        #(could be done solely in SQL, but i don't know enough yet)
+
+        #get leaderboards for each individual metric
+        sub_boards = [result[["id", m]] for m in metrics]
+        #sort as needed
+        sub_boards = [
+            s.sort_values(
+                s.columns[-1],
+                axis=0,
+                ascending=True if s.columns[-1].endswith("secs") else False
+            ).reset_index(drop=True) for s in sub_boards
+        ]
+        #concat index column (ranking by sort method)
+        sub_boards = [pd.concat([s, pd.DataFrame(s.index)], axis=1)
+            for s in sub_boards]
+        #rename indexing column
+        sub_boards = [
+            s.rename(
+                columns={
+                    s.columns[-1]: "score {}".format(s.columns[-2])
+                }
+            )
+            for s in sub_boards]
+        #merge on athlete id
+        #https://stackoverflow.com/questions/23668427/pandas-joining-multiple-dataframes-on-columns?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa
+        merged_board = reduce(
+            lambda left, right: pd.merge(left, right, on="id"),
+            sub_boards
+        )
+        #sum scores
+        merged_board = pd.concat([merged_board,
+            None if len(sub_boards) == 1 else reduce(
+            lambda left, right: left + right,
+            [
+                merged_board[c] for c in merged_board.columns
+                    if c.startswith("score")
+            ]
+        )], axis=1)
+        #rename summed column
+        merged_board = merged_board.rename(
+            columns={
+                merged_board.columns[-1]: "rank"
+            }
+        )
+        #drop individual scoring columns
+        merged_board = merged_board.drop(
+            [c for c in merged_board.columns if c.startswith("score")],
+            axis = 1
+        )
+        #get complete data board with non-metrics included
+        non_metrics_board = result[non_metrics]
+        final_board = pd.merge(
+            non_metrics_board, merged_board, on="id"
+        ).sort_values("rank")
 
     finally:
         #close connection
@@ -100,4 +169,6 @@ def leaderboard(division, region, limit, column_keys, creds):
             con.close()
 
     #return result
-    return result if result else None
+    #return sub_boards
+    #return merged_board
+    return final_board
