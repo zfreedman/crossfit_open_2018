@@ -8,7 +8,7 @@ import pymysql as pms
 import pandas as pd
 from functools import reduce
 
-def leaderboard(division, region, limit, column_keys, creds):
+def leaderboard(division, region, column_keys, creds):
     """
     :param division: int id referencing a division
     :param region: int id referencing a region
