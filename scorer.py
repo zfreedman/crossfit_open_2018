@@ -149,7 +149,7 @@ def leaderboard(division, region, column_keys, creds):
         #rename summed column
         merged_board = merged_board.rename(
             columns={
-                merged_board.columns[-1]: "rank"
+                merged_board.columns[-1]: "points"
             }
         )
         #drop individual scoring columns
@@ -161,7 +161,7 @@ def leaderboard(division, region, column_keys, creds):
         non_metrics_board = result[non_metrics]
         final_board = pd.merge(
             non_metrics_board, merged_board, on="id"
-        ).sort_values("rank")
+        ).sort_values("points")
 
     finally:
         #close connection
