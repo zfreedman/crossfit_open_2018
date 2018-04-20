@@ -18,8 +18,7 @@ def leaderboard(division, region, column_keys, creds):
         (id should be one of them)
     :param creds: pymysql database connection credentials used to
         establish, query with, and close a database connection
-    :return: complicated bullshit that can be read into a pandas
-        dataframe
+    :return: leaderboard data as a pandas dataframe
 
     This function will return a leaderboard scoring, ranking athletes
     from highest to lowest-performing, based on the division, region,
