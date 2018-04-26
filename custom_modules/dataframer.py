@@ -37,7 +37,7 @@ def grab_data(sql, creds):
 
 def grab_top_n_summarizer_data(n, div_id, func_str, dataframe, creds):
     """
-    :param n: Top n athletes
+    :param n: top n athletes
     :param div_id: ID for the athlete division
     :param func_str: function to apply to data (MAX, MIN, AVG)
     :param dataframe: dataframe to use for column references and athlete IDs
