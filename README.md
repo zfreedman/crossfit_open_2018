@@ -18,3 +18,6 @@ This repo contains Python-based data aggregation, visualization, and machine lea
 * Matplotlib
 * Seaborn
 * scikit-learn
+
+## sample data
+A .csv sample of the data can be found in the sample_data/ directory. This dataset has been cleaned of problematic entries and incomplete data points.
