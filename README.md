@@ -8,6 +8,8 @@ This repo contains Python-based data aggregation, visualization, and machine lea
 
 **scorer.py** - leaderboard scoring module used to rank athletes based on custom leaderboards. These leaderboards can be composed of all Open workouts, all athlete profile statistics, or any combination of any/all measurable GPP (general physical performance) metrics
 
+**learning/** - folder containing data analysis and predictive modeling for 3 different performance-based learning tasks
+
 ## technology used
 * Python 3.5
 * PyMySQL
